@@ -1,0 +1,1 @@
+@tailwind base;@tailwind components;@tailwind utilities;@layer base{body{@apply bg-background text-foreground font-sans;}button{@apply disabled:cursor-not-allowed disabled:opacity-60;}}html{scroll-behavior:smooth}
