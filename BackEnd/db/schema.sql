@@ -1,7 +1,3 @@
--- Ejecutar con: psql -U postgres -f db/schema.sql
-CREATE DATABASE motorflow;
-\connect motorflow
-
 CREATE TABLE clientes (
     cusername VARCHAR(30) PRIMARY KEY,
     ccontrasena VARCHAR(255) NOT NULL,
@@ -40,16 +36,9 @@ CREATE TABLE productos (
     idproducto SERIAL PRIMARY KEY, nombreproducto VARCHAR(100) NOT NULL,
     id_categoria INTEGER NOT NULL REFERENCES categorias(id_categoria),
     id_subcategoria INTEGER REFERENCES subcategorias(id_subcategoria), marca VARCHAR(50), descripcion TEXT,
+    especificaciones TEXT,
     imagen_principal VARCHAR(255), precioproducto NUMERIC(10,2) NOT NULL CHECK (precioproducto >= 0),
     stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0)
-);
-CREATE TABLE producto_imagenes (
-    id_imagen SERIAL PRIMARY KEY, idproducto INTEGER NOT NULL REFERENCES productos(idproducto) ON DELETE CASCADE,
-    url_imagen VARCHAR(255) NOT NULL, orden SMALLINT NOT NULL DEFAULT 1
-);
-CREATE TABLE producto_especificaciones (
-    id_especificacion SERIAL PRIMARY KEY, idproducto INTEGER NOT NULL REFERENCES productos(idproducto) ON DELETE CASCADE,
-    etiqueta VARCHAR(50) NOT NULL, valor VARCHAR(150) NOT NULL
 );
 CREATE TABLE carrito_items (
     cusername VARCHAR(30) NOT NULL REFERENCES clientes(cusername), idproducto INTEGER NOT NULL REFERENCES productos(idproducto),
@@ -61,6 +50,7 @@ CREATE TABLE ordenes (
     id_direccion INTEGER NOT NULL REFERENCES direcciones(id_direccion), id_courier VARCHAR(15) NOT NULL REFERENCES couriers(id_courier),
     id_emisor VARCHAR(15) NOT NULL REFERENCES emisores(id_emisor), numero_autorizacion VARCHAR(50) NOT NULL,
     fecha TIMESTAMP NOT NULL DEFAULT NOW(), total NUMERIC(10,2) NOT NULL CHECK (total >= 0),
+    costo_envio NUMERIC(10,2) NOT NULL DEFAULT 0,
     estado_envio SMALLINT NOT NULL DEFAULT 1 CHECK (estado_envio BETWEEN 1 AND 5)
 );
 CREATE TABLE detalle_orden (

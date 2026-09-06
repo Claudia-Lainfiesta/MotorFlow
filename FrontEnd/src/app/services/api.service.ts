@@ -42,5 +42,11 @@ export class ApiService {
   // Admin — edición y borrado (CRUD completo: productos, categorías, subcategorías)
   adminUpdate(path: string, id: number | string, body: any) { return this.h.put<any>(`${this.u}/admin/${path}/${id}`, body); }
   adminDelete(path: string, id: number | string) { return this.h.delete<any>(`${this.u}/admin/${path}/${id}`); }
-  adminOrderStatus(id: number | string, estado_envio: number) { return this.h.patch<any>(`${this.u}/admin/pedidos/${id}/estado`, { estado_envio }); }
+  uploadImage(file: File) {
+    const fd = new FormData();
+    fd.append('imagen', file);
+    return this.h.post<ApiResponse<{ url: string }>>(`${this.u}/admin/upload`, fd);
+  }
+  fileUrl(path: string) { return path?.startsWith('http') ? path : `${this.origin()}${path}`; }
+  private origin() { return this.u.replace(/\/api\/?$/, ''); }
 }

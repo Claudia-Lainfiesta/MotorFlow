@@ -1,1 +1,33 @@
-@tailwind base;@tailwind components;@tailwind utilities;@layer base{body{@apply bg-background text-foreground font-sans;}button{@apply disabled:cursor-not-allowed disabled:opacity-60;}}html{scroll-behavior:smooth}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+  button {
+    @apply disabled:cursor-not-allowed disabled:opacity-60;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Estilos para Firefox */
+  scrollbar-width: auto; /* 'auto' para que sea un poco más ancha que 'thin' */
+  scrollbar-color: #0284c7 #ffffff;
+}
+
+/* Estilos para Chrome, Edge, Safari y Brave */
+::-webkit-scrollbar {
+  width: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0284c7;
+  border-radius: 10px;
+}

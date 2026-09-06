@@ -1,24 +1,27 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../services/api.service';
+import { ToastService } from '../services/toast.service';
+import { IconComponent } from '../shared/icon.component';
 import { Category } from '../models/api';
 
-type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes' | 'pedidos';
+type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <section class="mx-auto max-w-6xl px-6 py-12">
       <p class="font-bold text-primary">ADMINISTRACIÓN</p>
       <h1 class="text-3xl font-extrabold">Panel de MotorFlow</h1>
 
-      <div class="mt-6 flex flex-wrap gap-3">
+      <div class="mt-6 flex flex-wrap gap-2">
         @for(t of tabs; track t){
           <button (click)="setTab(t)"
-                  [class.bg-primary]="tab()===t" [class.text-white]="tab()===t"
-                  class="rounded-xl bg-motorflow-pale px-4 py-2 font-bold text-primary">
+                  [class.bg-primary]="tab()===t" [class.text-white]="tab()===t" [class.border-primary]="tab()===t"
+                  class="rounded-md border px-4 py-2 text-sm font-bold">
             {{labels[t]}}
           </button>
         }
@@ -26,45 +29,60 @@ type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes' | 'pedidos'
 
       <!-- PRODUCTOS -->
       @if(tab()==='productos'){
-        <div class="mt-6 rounded-2xl border bg-white p-5">
-          <h2 class="font-bold">{{editingProductId()? 'Editar producto' : 'Nuevo producto'}}</h2>
+        <div class="mt-6 rounded-lg border bg-white p-5">
+          <h2 class="font-bold">{{editingProductId() ? 'Editar producto' : 'Nuevo producto'}}</h2>
           <div class="mt-3 grid gap-2 sm:grid-cols-3">
-            <input [(ngModel)]="product.nombreproducto" placeholder="Nombre" class="rounded border p-2">
-            <input [(ngModel)]="product.marca" placeholder="Marca" class="rounded border p-2">
-            <select [(ngModel)]="product.id_categoria" class="rounded border p-2">
+            <input [(ngModel)]="product.nombreproducto" placeholder="Nombre" class="rounded-md border p-2">
+            <input [(ngModel)]="product.marca" placeholder="Marca" class="rounded-md border p-2">
+            <select [(ngModel)]="product.id_categoria" class="rounded-md border p-2">
               <option [ngValue]="null">Categoría...</option>
               @for(c of categories(); track c.id_categoria){<option [ngValue]="c.id_categoria">{{c.nombre_categoria}}</option>}
             </select>
-            <select [(ngModel)]="product.id_subcategoria" class="rounded border p-2">
+            <select [(ngModel)]="product.id_subcategoria" class="rounded-md border p-2">
               <option [ngValue]="null">Subcategoría (opcional)</option>
               @for(s of subcategoriasOf(product.id_categoria); track s.id_subcategoria){<option [ngValue]="s.id_subcategoria">{{s.nombre_subcategoria}}</option>}
             </select>
-            <input [(ngModel)]="product.precioproducto" type="number" placeholder="Precio" class="rounded border p-2">
-            <input [(ngModel)]="product.stock" type="number" placeholder="Stock" class="rounded border p-2">
-            <input [(ngModel)]="product.imagen_principal" placeholder="URL de imagen" class="rounded border p-2 sm:col-span-3">
-            <textarea [(ngModel)]="product.descripcion" placeholder="Descripción" class="rounded border p-2 sm:col-span-3"></textarea>
+            <input [(ngModel)]="product.precioproducto" type="number" placeholder="Precio" class="rounded-md border p-2">
+            <input [(ngModel)]="product.stock" type="number" placeholder="Stock" class="rounded-md border p-2">
+            <textarea [(ngModel)]="product.descripcion" placeholder="Descripción" rows="3" class="rounded-md border p-2 sm:col-span-3"></textarea>
+            <textarea [(ngModel)]="product.especificaciones" placeholder="Especificaciones (texto libre — una por línea, ej. &quot;- Temperatura de operación: -50°C a 150°C&quot;)" rows="5" class="rounded-md border p-2 sm:col-span-3"></textarea>
           </div>
+
+          <div class="mt-3 flex items-center gap-4">
+            <label class="flex cursor-pointer items-center gap-2 rounded-md border border-dashed px-4 py-3 text-sm font-bold text-primary hover:bg-motorflow-pale">
+              <app-icon name="upload" [size]="18"/> {{uploading ? 'Subiendo...' : 'Subir imagen desde mi equipo'}}
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" (change)="onFile($event)" class="hidden" [disabled]="uploading">
+            </label>
+            @if(product.imagen_principal){
+              <img [src]="img(product.imagen_principal)" class="h-16 w-16 rounded-md border object-cover">
+            } @else {
+              <span class="flex h-16 w-16 items-center justify-center rounded-md border text-slate-300"><app-icon name="image" [size]="24"/></span>
+            }
+          </div>
+
           <div class="mt-4 flex gap-3">
-            <button (click)="saveProduct()" class="rounded bg-primary px-4 py-2 font-bold text-white">
-              {{editingProductId()? 'Guardar cambios' : 'Crear producto'}}
+            <button (click)="saveProduct()" [disabled]="uploading" class="rounded-md bg-primary px-4 py-2 font-bold text-white">
+              {{editingProductId() ? 'Guardar cambios' : 'Crear producto'}}
             </button>
-            @if(editingProductId()){<button (click)="cancelEditProduct()" class="rounded bg-motorflow-pale px-4 py-2 font-bold text-primary">Cancelar</button>}
+            @if(editingProductId()){<button (click)="cancelEditProduct()" class="rounded-md bg-motorflow-pale px-4 py-2 font-bold text-primary">Cancelar</button>}
           </div>
         </div>
 
-        <div class="mt-6 overflow-auto rounded-2xl border bg-white">
+        <div class="mt-6 overflow-auto rounded-lg border bg-white">
           <table class="w-full text-left">
             <thead><tr class="border-b bg-motorflow-pale/40 text-sm"><th class="p-3">Producto</th><th class="p-3">Precio</th><th class="p-3">Stock</th><th class="p-3">Acciones</th></tr></thead>
             <tbody>
               @for(p of products(); track p.idproducto){
                 <tr class="border-b">
-                  <td class="p-3">{{p.nombreproducto}}</td>
+                  <td class="flex items-center gap-3 p-3"><img [src]="img(p.imagen_principal)" class="h-9 w-9 rounded border object-cover">{{p.nombreproducto}}</td>
                   <td class="p-3">Q{{p.precioproducto}}</td>
                   <td class="p-3">{{p.stock}}</td>
-                  <td class="p-3"><div class="flex gap-3 text-sm font-bold">
-                    <button (click)="editProduct(p)" class="text-primary">Editar</button>
-                    <button (click)="deleteProduct(p.idproducto)" class="text-red-600">Eliminar</button>
-                  </div></td>
+                  <td class="p-3">
+                    <div class="flex gap-1">
+                      <button (click)="editProduct(p)" title="Editar" class="rounded-md p-2 text-primary hover:bg-motorflow-pale"><app-icon name="edit" [size]="17"/></button>
+                      <button (click)="deleteProduct(p.idproducto)" title="Eliminar" class="rounded-md p-2 text-red-600 hover:bg-red-50"><app-icon name="trash" [size]="17"/></button>
+                    </div>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -74,18 +92,18 @@ type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes' | 'pedidos'
 
       <!-- CATEGORIAS -->
       @if(tab()==='categorias'){
-        <div class="mt-6 rounded-2xl border bg-white p-5">
+        <div class="mt-6 rounded-lg border bg-white p-5">
           <h2 class="font-bold">Nueva categoría</h2>
           <div class="mt-3 flex gap-3">
-            <input [(ngModel)]="newCategoryName" placeholder="Nombre de categoría" class="flex-1 rounded border p-2">
-            <button (click)="createCategory()" class="rounded bg-primary px-4 py-2 font-bold text-white">Crear</button>
+            <input [(ngModel)]="newCategoryName" placeholder="Nombre de categoría" class="flex-1 rounded-md border p-2">
+            <button (click)="createCategory()" class="rounded-md bg-primary px-4 py-2 font-bold text-white">Crear</button>
           </div>
         </div>
         <div class="mt-6 grid gap-3">
           @for(c of categories(); track c.id_categoria){
-            <div class="flex items-center justify-between rounded-2xl border bg-white p-4">
+            <div class="flex items-center justify-between rounded-lg border bg-white p-4">
               <span class="font-semibold">{{c.nombre_categoria}}</span>
-              <button (click)="deleteCategory(c.id_categoria)" class="text-sm font-bold text-red-600">Eliminar</button>
+              <button (click)="deleteCategory(c.id_categoria)" title="Eliminar" class="rounded-md p-2 text-red-600 hover:bg-red-50"><app-icon name="trash" [size]="17"/></button>
             </div>
           }
         </div>
@@ -93,26 +111,26 @@ type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes' | 'pedidos'
 
       <!-- SUBCATEGORIAS -->
       @if(tab()==='subcategorias'){
-        <div class="mt-6 rounded-2xl border bg-white p-5">
+        <div class="mt-6 rounded-lg border bg-white p-5">
           <h2 class="font-bold">Nueva subcategoría</h2>
           <div class="mt-3 grid gap-3 sm:grid-cols-3">
-            <select [(ngModel)]="newSubcategory.id_categoria" class="rounded border p-2">
+            <select [(ngModel)]="newSubcategory.id_categoria" class="rounded-md border p-2">
               <option [ngValue]="null">Categoría...</option>
               @for(c of categories(); track c.id_categoria){<option [ngValue]="c.id_categoria">{{c.nombre_categoria}}</option>}
             </select>
-            <input [(ngModel)]="newSubcategory.nombre_subcategoria" placeholder="Nombre de subcategoría" class="rounded border p-2 sm:col-span-2">
+            <input [(ngModel)]="newSubcategory.nombre_subcategoria" placeholder="Nombre de subcategoría" class="rounded-md border p-2 sm:col-span-2">
           </div>
-          <button (click)="createSubcategory()" class="mt-4 rounded bg-primary px-4 py-2 font-bold text-white">Crear</button>
+          <button (click)="createSubcategory()" class="mt-4 rounded-md bg-primary px-4 py-2 font-bold text-white">Crear</button>
         </div>
         <div class="mt-6 grid gap-4">
           @for(c of categories(); track c.id_categoria){
-            <div class="rounded-2xl border bg-white p-4">
+            <div class="rounded-lg border bg-white p-4">
               <p class="font-bold text-primary">{{c.nombre_categoria}}</p>
               @if(!c.subcategorias.length){<p class="mt-2 text-sm text-slate-500">Sin subcategorías todavía.</p>}
               @for(s of c.subcategorias; track s.id_subcategoria){
                 <div class="mt-2 flex items-center justify-between border-t pt-2">
                   <span>{{s.nombre_subcategoria}}</span>
-                  <button (click)="deleteSubcategory(s.id_subcategoria)" class="text-sm font-bold text-red-600">Eliminar</button>
+                  <button (click)="deleteSubcategory(s.id_subcategoria)" title="Eliminar" class="rounded-md p-2 text-red-600 hover:bg-red-50"><app-icon name="trash" [size]="16"/></button>
                 </div>
               }
             </div>
@@ -122,48 +140,31 @@ type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes' | 'pedidos'
 
       <!-- CLIENTES -->
       @if(tab()==='clientes'){
-        <div class="mt-6 overflow-auto rounded-2xl border bg-white">
+        <div class="mt-6 overflow-auto rounded-lg border bg-white">
           <table class="w-full text-left">
-            <thead><tr class="border-b bg-motorflow-pale/40 text-sm"><th class="p-3">Usuario</th><th class="p-3">Correo</th></tr></thead>
-            <tbody>@for(x of clientes(); track x.cusername){<tr class="border-b"><td class="p-3">{{x.cusername}}</td><td class="p-3">{{x.email}}</td></tr>}</tbody>
+            <thead><tr class="border-b bg-motorflow-pale/40 text-sm"><th class="p-3">Usuario</th><th class="p-3">Correo</th><th class="p-3">Pedidos</th></tr></thead>
+            <tbody>@for(x of clientes(); track x.cusername){<tr class="border-b"><td class="p-3">{{x.cusername}}</td><td class="p-3">{{x.email}}</td><td class="p-3">{{x.pedidos}}</td></tr>}</tbody>
           </table>
         </div>
       }
 
-      <!-- PEDIDOS -->
-      @if(tab()==='pedidos'){
-        <div class="mt-6 grid gap-3">
-          @for(o of pedidos(); track o.ordendecompra){
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white p-4">
-              <div><span class="font-bold">Orden #{{o.ordendecompra}}</span> · Q{{o.total}} · {{o.fecha}}</div>
-              <div class="flex items-center gap-2">
-                <select [(ngModel)]="o.estado_envio" class="rounded border p-2 text-sm">
-                  <option [ngValue]="1">1 · Orden nueva</option>
-                  <option [ngValue]="2">2 · Surtiéndose</option>
-                  <option [ngValue]="3">3 · Empacándose</option>
-                  <option [ngValue]="4">4 · En ruta</option>
-                  <option [ngValue]="5">5 · Entregada</option>
-                </select>
-                <button (click)="updateOrderStatus(o)" class="rounded bg-primary px-3 py-2 text-sm font-bold text-white">Guardar</button>
-              </div>
-            </div>
-          }
-        </div>
-      }
     </section>
   `
 })
 export class AdminComponent implements OnInit {
   api = inject(ApiService);
+  toast = inject(ToastService);
+  route = inject(ActivatedRoute);
+  router = inject(Router);
 
-  tabs: Tab[] = ['productos', 'categorias', 'subcategorias', 'clientes', 'pedidos'];
-  labels: Record<Tab, string> = { productos: 'Productos', categorias: 'Categorías', subcategorias: 'Subcategorías', clientes: 'Clientes', pedidos: 'Pedidos' };
+  tabs: Tab[] = ['productos', 'categorias', 'subcategorias', 'clientes'];
+  labels: Record<Tab, string> = { productos: 'Productos', categorias: 'Categorías', subcategorias: 'Subcategorías', clientes: 'Clientes' };
   tab = signal<Tab>('productos');
 
   products = signal<any[]>([]);
   categories = signal<Category[]>([]);
   clientes = signal<any[]>([]);
-  pedidos = signal<any[]>([]);
+  uploading = false;
 
   editingProductId = signal<number | null>(null);
   product: any = this.blankProduct();
@@ -171,16 +172,19 @@ export class AdminComponent implements OnInit {
   newSubcategory: any = { id_categoria: null, nombre_subcategoria: '' };
 
   ngOnInit() {
+    const initial = this.route.snapshot.url[1]?.path as Tab | undefined;
+    if (initial && this.tabs.includes(initial)) this.tab.set(initial);
     this.api.categories().subscribe(r => this.categories.set(r.data));
-    this.loadTabData('productos');
+    this.loadTabData(this.tab());
   }
 
-  setTab(t: Tab) { this.tab.set(t); this.loadTabData(t); }
+  img(path: string) { return this.api.fileUrl(path); }
+
+  setTab(t: Tab) { this.tab.set(t); this.router.navigate(['/admin', t]); this.loadTabData(t); }
 
   loadTabData(t: Tab) {
     if (t === 'productos') this.api.products().subscribe(r => this.products.set(r.data));
     if (t === 'clientes') this.api.admin('clientes').subscribe(r => this.clientes.set(r.data));
-    if (t === 'pedidos') this.api.orders().subscribe(r => this.pedidos.set(r.data));
   }
 
   subcategoriasOf(idCategoria: number | null) {
@@ -188,16 +192,30 @@ export class AdminComponent implements OnInit {
   }
 
   blankProduct() {
-    return { nombreproducto: '', marca: '', id_categoria: null, id_subcategoria: null, precioproducto: 0, stock: 0, imagen_principal: 'https://picsum.photos/seed/motorflow-new/900/900', descripcion: '' };
+    return { nombreproducto: '', marca: '', id_categoria: null, id_subcategoria: null, precioproducto: 0, stock: 0, imagen_principal: '', descripcion: '', especificaciones: '' };
+  }
+
+  onFile(ev: Event) {
+    const file = (ev.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.uploading = true;
+    this.api.uploadImage(file).subscribe({
+      next: r => { this.product.imagen_principal = r.data.url; this.uploading = false; },
+      error: e => { this.uploading = false; this.toast.show(e.error?.message || 'No se pudo subir la imagen'); }
+    });
   }
 
   editProduct(p: any) { this.editingProductId.set(p.idproducto); this.product = { ...p }; }
   cancelEditProduct() { this.editingProductId.set(null); this.product = this.blankProduct(); }
 
   saveProduct() {
+    if (!this.product.imagen_principal) return this.toast.show('Sube una imagen para el producto');
     const id = this.editingProductId();
     const req = id ? this.api.adminUpdate('productos', id, this.product) : this.api.admin('productos', this.product);
-    req.subscribe(() => { this.cancelEditProduct(); this.loadTabData('productos'); });
+    req.subscribe({
+      next: () => { this.cancelEditProduct(); this.loadTabData('productos'); },
+      error: e => this.toast.show(e.error?.message || 'No se pudo guardar el producto')
+    });
   }
 
   deleteProduct(id: number) { this.api.adminDelete('productos', id).subscribe(() => this.loadTabData('productos')); }
@@ -211,7 +229,10 @@ export class AdminComponent implements OnInit {
   }
 
   deleteCategory(id: number) {
-    this.api.adminDelete('categorias', id).subscribe(() => this.api.categories().subscribe(r => this.categories.set(r.data)));
+    this.api.adminDelete('categorias', id).subscribe({
+      next: () => this.api.categories().subscribe(r => this.categories.set(r.data)),
+      error: e => this.toast.show(e.error?.message || 'No se pudo eliminar')
+    });
   }
 
   createSubcategory() {
@@ -223,8 +244,10 @@ export class AdminComponent implements OnInit {
   }
 
   deleteSubcategory(id: number) {
-    this.api.adminDelete('subcategorias', id).subscribe(() => this.api.categories().subscribe(r => this.categories.set(r.data)));
+    this.api.adminDelete('subcategorias', id).subscribe({
+      next: () => this.api.categories().subscribe(r => this.categories.set(r.data)),
+      error: e => this.toast.show(e.error?.message || 'No se pudo eliminar')
+    });
   }
 
-  updateOrderStatus(o: any) { this.api.adminOrderStatus(o.ordendecompra, o.estado_envio).subscribe(() => this.loadTabData('pedidos')); }
 }

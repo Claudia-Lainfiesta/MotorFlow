@@ -11,7 +11,7 @@ export interface Product {
   id_subcategoria?: number;
   nombre_subcategoria?: string;
   imagenes?: { url_imagen: string }[];
-  especificaciones?: { etiqueta: string; valor: string }[];
+  especificaciones?: string;
 }
 
 export interface ApiResponse<T> {
