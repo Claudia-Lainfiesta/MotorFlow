@@ -27,7 +27,7 @@ import { IconComponent } from './icon.component';
         @if(auth.authenticated()){
           <div class="border-b p-5">
             <div class="flex items-center gap-3">
-              <span class="flex h-11 w-11 items-center justify-center rounded-full bg-motorflow-pale font-bold text-primary">{{initial()}}</span>
+              <span class="flex h-11 w-11 items-center justify-center rounded-md bg-gradient-to-br from-motorflow-pale to-sky-300 font-bold text-black">{{initial()}}</span>
               <div class="min-w-0">
                 <p class="truncate font-bold">{{auth.user()?.cusername}}</p>
                 <p class="truncate text-sm text-slate-500">{{auth.user()?.email}}</p>

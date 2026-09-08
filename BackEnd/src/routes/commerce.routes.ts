@@ -1,1 +1,16 @@
-import { Router } from 'express'; import { auth } from '../middleware/auth.js'; import * as c from '../controllers/commerce.controller.js'; export const commerceRoutes=Router();commerceRoutes.use(auth);commerceRoutes.get('/carrito',c.cart);commerceRoutes.put('/carrito',c.putCart);commerceRoutes.delete('/carrito/:id',c.removeCart);commerceRoutes.get('/direcciones',c.addresses);commerceRoutes.post('/direcciones',c.saveAddress);commerceRoutes.delete('/direcciones/:id',c.deleteAddress);commerceRoutes.get('/couriers/cotizaciones',c.quotes);commerceRoutes.post('/checkout',c.checkout);commerceRoutes.get('/pedidos',c.orders);commerceRoutes.get('/pedidos/:id/estatus',c.track);commerceRoutes.put('/direcciones/:id',c.updateAddress);
+import { Router } from "express";
+import { auth } from "../middleware/auth.js";
+import * as c from "../controllers/commerce.controller.js";
+export const commerceRoutes = Router();
+commerceRoutes.use(auth);
+commerceRoutes.get("/carrito", c.cart);
+commerceRoutes.put("/carrito", c.putCart);
+commerceRoutes.delete("/carrito/:id", c.removeCart);
+commerceRoutes.get("/direcciones", c.addresses);
+commerceRoutes.post("/direcciones", c.saveAddress);
+commerceRoutes.delete("/direcciones/:id", c.deleteAddress);
+commerceRoutes.get("/couriers/cotizaciones", c.quotes);
+commerceRoutes.post("/checkout", c.checkout);
+commerceRoutes.get("/pedidos", c.orders);
+commerceRoutes.get("/pedidos/:id/estatus", c.track);
+commerceRoutes.put("/direcciones/:id", c.updateAddress);

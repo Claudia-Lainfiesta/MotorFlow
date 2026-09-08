@@ -1,9 +1,166 @@
-import type { Request,Response } from 'express'; import { pool } from '../config/database.js';
-export async function saveProduct(req:Request,res:Response){const b=req.body;const fields=['nombreproducto','id_categoria','id_subcategoria','marca','descripcion','especificaciones','imagen_principal','precioproducto','stock'];if(!b.nombreproducto||!Number.isInteger(b.id_categoria)||Number(b.precioproducto)<0||!Number.isInteger(b.stock)||b.stock<0)return res.status(400).json({status:1,message:'Datos de producto inválidos'});if(req.params.id){const {rows}=await pool.query(`UPDATE productos SET nombreproducto=$1,id_categoria=$2,id_subcategoria=$3,marca=$4,descripcion=$5,especificaciones=$6,imagen_principal=$7,precioproducto=$8,stock=$9 WHERE idproducto=$10 RETURNING *`,[...fields.map(k=>b[k]??null),req.params.id]);return rows[0]?res.json({status:0,message:'Producto actualizado',data:rows[0]}):res.status(404).json({status:1,message:'Producto no encontrado'});}const {rows}=await pool.query(`INSERT INTO productos(${fields.join(',')}) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,fields.map(k=>b[k]??null));res.status(201).json({status:0,message:'Producto creado',data:rows[0]});}
-export async function deleteProduct(req:Request,res:Response){try{const r=await pool.query('DELETE FROM productos WHERE idproducto=$1',[req.params.id]);res.status(r.rowCount?200:404).json({status:r.rowCount?0:1,message:r.rowCount?'Producto eliminado':'Producto no encontrado'});}catch{return res.status(409).json({status:1,message:'No se puede eliminar un producto presente en pedidos'});}}
-export async function saveCategory(req:Request,res:Response){const name=String(req.body.nombre_categoria||'').trim();if(!name)return res.status(400).json({status:1,message:'Nombre requerido'});const sql=req.params.id?'UPDATE categorias SET nombre_categoria=$1 WHERE id_categoria=$2 RETURNING *':'INSERT INTO categorias(nombre_categoria) VALUES($1) RETURNING *';const {rows}=await pool.query(sql,req.params.id?[name,req.params.id]:[name]);res.status(rows[0]?200:404).json({status:rows[0]?0:1,message:rows[0]?'Categoría guardada':'Categoría no encontrada',data:rows[0]});}
-export async function saveSubcategory(req:Request,res:Response){const {id_categoria,nombre_subcategoria}=req.body;if(!Number.isInteger(id_categoria)||!nombre_subcategoria)return res.status(400).json({status:1,message:'Datos inválidos'});const sql=req.params.id?'UPDATE subcategorias SET id_categoria=$1,nombre_subcategoria=$2 WHERE id_subcategoria=$3 RETURNING *':'INSERT INTO subcategorias(id_categoria,nombre_subcategoria) VALUES($1,$2) RETURNING *';const {rows}=await pool.query(sql,req.params.id?[id_categoria,nombre_subcategoria,req.params.id]:[id_categoria,nombre_subcategoria]);res.status(rows[0]?200:404).json({status:rows[0]?0:1,message:rows[0]?'Subcategoría guardada':'Subcategoría no encontrada',data:rows[0]});}
-export async function deleteCategory(req:Request,res:Response){try{const r=await pool.query('DELETE FROM categorias WHERE id_categoria=$1',[req.params.id]);res.status(r.rowCount?200:404).json({status:r.rowCount?0:1,message:r.rowCount?'Categoría eliminada':'Categoría no encontrada'});}catch{res.status(409).json({status:1,message:'No se puede eliminar una categoría con productos o subcategorías'});}}
-export async function deleteSubcategory(req:Request,res:Response){try{const r=await pool.query('DELETE FROM subcategorias WHERE id_subcategoria=$1',[req.params.id]);res.status(r.rowCount?200:404).json({status:r.rowCount?0:1,message:r.rowCount?'Subcategoría eliminada':'Subcategoría no encontrada'});}catch{res.status(409).json({status:1,message:'No se puede eliminar una subcategoría con productos asociados'});}}
-export async function clients(_req:Request,res:Response){const {rows}=await pool.query(`SELECT c.cusername,c.email,COUNT(o.ordendecompra)::int pedidos,COALESCE(SUM(o.total),0) total_comprado FROM clientes c LEFT JOIN ordenes o USING(cusername) GROUP BY c.cusername,c.email ORDER BY c.cusername`);res.json({status:0,message:'Clientes obtenidos',data:rows});}
-export async function uploadImage(req:Request,res:Response){if(!req.file)return res.status(400).json({status:1,message:'No se recibió ninguna imagen'});res.status(201).json({status:0,message:'Imagen subida',data:{url:`/uploads/${req.file.filename}`}});}
+import type { Request, Response } from "express";
+import { pool } from "../config/database.js";
+export async function saveProduct(req: Request, res: Response) {
+  const b = req.body;
+  const fields = [
+    "nombreproducto",
+    "id_categoria",
+    "id_subcategoria",
+    "marca",
+    "descripcion",
+    "especificaciones",
+    "imagen_principal",
+    "precioproducto",
+    "stock",
+  ];
+  if (
+    !b.nombreproducto ||
+    !Number.isInteger(b.id_categoria) ||
+    Number(b.precioproducto) < 0 ||
+    !Number.isInteger(b.stock) ||
+    b.stock < 0
+  )
+    return res
+      .status(400)
+      .json({ status: 1, message: "Datos de producto inválidos" });
+  if (req.params.id) {
+    const { rows } = await pool.query(
+      `UPDATE productos SET nombreproducto=$1,id_categoria=$2,id_subcategoria=$3,marca=$4,descripcion=$5,especificaciones=$6,imagen_principal=$7,precioproducto=$8,stock=$9 WHERE idproducto=$10 RETURNING *`,
+      [...fields.map((k) => b[k] ?? null), req.params.id],
+    );
+    return rows[0]
+      ? res.json({ status: 0, message: "Producto actualizado", data: rows[0] })
+      : res.status(404).json({ status: 1, message: "Producto no encontrado" });
+  }
+  const { rows } = await pool.query(
+    `INSERT INTO productos(${fields.join(",")}) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    fields.map((k) => b[k] ?? null),
+  );
+  res
+    .status(201)
+    .json({ status: 0, message: "Producto creado", data: rows[0] });
+}
+export async function deleteProduct(req: Request, res: Response) {
+  try {
+    const r = await pool.query("DELETE FROM productos WHERE idproducto=$1", [
+      req.params.id,
+    ]);
+    res
+      .status(r.rowCount ? 200 : 404)
+      .json({
+        status: r.rowCount ? 0 : 1,
+        message: r.rowCount ? "Producto eliminado" : "Producto no encontrado",
+      });
+  } catch {
+    return res
+      .status(409)
+      .json({
+        status: 1,
+        message: "No se puede eliminar un producto presente en pedidos",
+      });
+  }
+}
+export async function saveCategory(req: Request, res: Response) {
+  const name = String(req.body.nombre_categoria || "").trim();
+  if (!name)
+    return res.status(400).json({ status: 1, message: "Nombre requerido" });
+  const sql = req.params.id
+    ? "UPDATE categorias SET nombre_categoria=$1 WHERE id_categoria=$2 RETURNING *"
+    : "INSERT INTO categorias(nombre_categoria) VALUES($1) RETURNING *";
+  const { rows } = await pool.query(
+    sql,
+    req.params.id ? [name, req.params.id] : [name],
+  );
+  res
+    .status(rows[0] ? 200 : 404)
+    .json({
+      status: rows[0] ? 0 : 1,
+      message: rows[0] ? "Categoría guardada" : "Categoría no encontrada",
+      data: rows[0],
+    });
+}
+export async function saveSubcategory(req: Request, res: Response) {
+  const { id_categoria, nombre_subcategoria } = req.body;
+  if (!Number.isInteger(id_categoria) || !nombre_subcategoria)
+    return res.status(400).json({ status: 1, message: "Datos inválidos" });
+  const sql = req.params.id
+    ? "UPDATE subcategorias SET id_categoria=$1,nombre_subcategoria=$2 WHERE id_subcategoria=$3 RETURNING *"
+    : "INSERT INTO subcategorias(id_categoria,nombre_subcategoria) VALUES($1,$2) RETURNING *";
+  const { rows } = await pool.query(
+    sql,
+    req.params.id
+      ? [id_categoria, nombre_subcategoria, req.params.id]
+      : [id_categoria, nombre_subcategoria],
+  );
+  res
+    .status(rows[0] ? 200 : 404)
+    .json({
+      status: rows[0] ? 0 : 1,
+      message: rows[0] ? "Subcategoría guardada" : "Subcategoría no encontrada",
+      data: rows[0],
+    });
+}
+export async function deleteCategory(req: Request, res: Response) {
+  try {
+    const r = await pool.query("DELETE FROM categorias WHERE id_categoria=$1", [
+      req.params.id,
+    ]);
+    res
+      .status(r.rowCount ? 200 : 404)
+      .json({
+        status: r.rowCount ? 0 : 1,
+        message: r.rowCount ? "Categoría eliminada" : "Categoría no encontrada",
+      });
+  } catch {
+    res
+      .status(409)
+      .json({
+        status: 1,
+        message:
+          "No se puede eliminar una categoría con productos o subcategorías",
+      });
+  }
+}
+export async function deleteSubcategory(req: Request, res: Response) {
+  try {
+    const r = await pool.query(
+      "DELETE FROM subcategorias WHERE id_subcategoria=$1",
+      [req.params.id],
+    );
+    res
+      .status(r.rowCount ? 200 : 404)
+      .json({
+        status: r.rowCount ? 0 : 1,
+        message: r.rowCount
+          ? "Subcategoría eliminada"
+          : "Subcategoría no encontrada",
+      });
+  } catch {
+    res
+      .status(409)
+      .json({
+        status: 1,
+        message:
+          "No se puede eliminar una subcategoría con productos asociados",
+      });
+  }
+}
+export async function clients(_req: Request, res: Response) {
+  const { rows } = await pool.query(
+    `SELECT c.cusername,c.email,COUNT(o.ordendecompra)::int pedidos,COALESCE(SUM(o.total),0) total_comprado FROM clientes c LEFT JOIN ordenes o USING(cusername) GROUP BY c.cusername,c.email ORDER BY c.cusername`,
+  );
+  res.json({ status: 0, message: "Clientes obtenidos", data: rows });
+}
+export async function uploadImage(req: Request, res: Response) {
+  if (!req.file)
+    return res
+      .status(400)
+      .json({ status: 1, message: "No se recibió ninguna imagen" });
+  res
+    .status(201)
+    .json({
+      status: 0,
+      message: "Imagen subida",
+      data: { url: `/uploads/${req.file.filename}` },
+    });
+}

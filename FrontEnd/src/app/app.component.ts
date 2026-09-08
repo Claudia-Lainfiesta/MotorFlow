@@ -13,11 +13,14 @@ import { SideNavComponent } from './shared/side-nav.component';
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent, SideNavComponent],
   template: `
-    <header class="sticky top-0 z-30 border-b-2 bg-white/90 backdrop-blur">
+    <header class="sticky top-0 z-30 border-b-2 bg-white/95 backdrop-blur">
       <nav class="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3.5">
+        
+        <!-- LADO IZQUIERDO: Menú, Logo y Links -->
         <button (click)="drawerOpen.set(true)" class="rounded-md p-2 hover:bg-slate-100" aria-label="Abrir menú">
           <app-icon name="menu" [size]="22"/>
         </button>
+        
         <a href="/" (click)="goHome($event)" class="flex shrink-0 items-center gap-2 text-xl font-extrabold text-primary">
           <img src="assets/favicon.svg" alt="MotorFlow" class="h-7 w-auto object-contain" />
           <span>Motor<span class="text-motorflow-dark">Flow</span></span>
@@ -28,18 +31,20 @@ import { SideNavComponent } from './shared/side-nav.component';
           <a href="/" (click)="goCatalogo($event)" class="hover:text-primary">Productos</a>
         </div>
 
-        <div class="ml-auto flex flex-1 items-center justify-end gap-3">
-          <div class="relative hidden w-36 sm:block md:w-44">
-            <div class="absolute inset-y-0 left-2.5 flex items-center text-black">
-              <app-icon name="search" [size]="15"/>
-            </div>
-            <button
-              (click)="goCatalogoBuscar($event)"
-              class="w-full rounded-full border bg-slate-50 py-2 pl-8 pr-3 text-left text-sm text-black font-semibold">
-              {{ 'Buscar' }}
-            </button>
+        <!-- CENTRO: Buscador expandido en el medio -->
+        <div class="relative hidden flex-1 max-w-md mx-4 sm:block ml-20">
+          <div class="absolute inset-y-0 left-2.5 flex items-center text-black">
+            <app-icon name="search" [size]="15"/>
           </div>
+          <button
+            (click)="goCatalogoBuscar($event)"
+            class="w-full rounded-md border border-slate-400 bg-slate-100 py-2 pl-8 pr-3 text-left text-sm font-semibold text-black">
+            {{ 'Buscar' }}
+          </button>
+        </div>
 
+        <!-- LADO DERECHO: Carrito y Perfil (ml-auto para pegarlo a la derecha) -->
+        <div class="ml-auto flex items-center gap-3">
           <a routerLink="/carrito" class="relative rounded-md p-2 hover:bg-slate-100" aria-label="Carrito">
             <app-icon name="cart" [size]="22"/>
             @if(cart.count() > 0){
@@ -48,13 +53,14 @@ import { SideNavComponent } from './shared/side-nav.component';
           </a>
 
           @if(auth.authenticated()){
-            <button (click)="drawerOpen.set(true)" class="flex h-9 w-9 items-center justify-center rounded-full bg-motorflow-pale font-bold text-primary" aria-label="Mi cuenta">
+            <button (click)="drawerOpen.set(true)" class="flex h-10 w-10 items-center justify-center rounded-md bg-gradient-to-br from-motorflow-pale to-sky-300 font-bold text-black" aria-label="Mi cuenta">
               {{initial()}}
             </button>
           } @else {
             <a routerLink="/login" class="rounded-md bg-primary px-4 py-2 text-sm font-bold text-white">Ingresar</a>
           }
         </div>
+
       </nav>
     </header>
 
