@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-white text-foreground font-sans;
   }
   button {
     @apply disabled:cursor-not-allowed disabled:opacity-60;

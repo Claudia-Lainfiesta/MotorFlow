@@ -54,29 +54,41 @@ const STEPS = [
 
           <div class="mt-5 border-t pt-5">
             @if(!tracking[o.ordendecompra]){
-              <button (click)="track(o.ordendecompra)" class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold text-primary">
+              <button (click)="track(o.ordendecompra)" class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold text-primary hover:bg-slate-50">
                 <app-icon name="truck" [size]="16"/> Consultar estatus de envío
               </button>
-            } @else if(tracking[o.ordendecompra] === 'loading') {
-              <p class="text-sm text-slate-500">Consultando con el courier...</p>
-            } @else if(stepIndex(tracking[o.ordendecompra]!) === -1) {
-              <p class="text-sm font-semibold text-slate-600">{{tracking[o.ordendecompra]}}</p>
             } @else {
-              <div class="flex items-start justify-between">
-                @for(s of steps; track s.key; let i = $index) {
-                  <div class="flex flex-1 flex-col items-center text-center">
-                    <div class="flex w-full items-center">
-                      @if(i > 0){<span class="h-px flex-1" [class.bg-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.bg-slate-200]="i > stepIndex(tracking[o.ordendecompra]!)"></span>}
-                      <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2"
-                            [class.border-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.bg-motorflow-pale]="i <= stepIndex(tracking[o.ordendecompra]!)"
-                            [class.text-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.border-slate-200]="i > stepIndex(tracking[o.ordendecompra]!)" [class.text-slate-300]="i > stepIndex(tracking[o.ordendecompra]!)">
-                        <app-icon [name]="s.icon" [size]="18"/>
-                      </span>
-                      @if(i < steps.length - 1){<span class="h-px flex-1" [class.bg-primary]="i < stepIndex(tracking[o.ordendecompra]!)" [class.bg-slate-200]="i >= stepIndex(tracking[o.ordendecompra]!)"></span>}
-                    </div>
-                    <span class="mt-2 text-xs font-semibold" [class.text-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.text-slate-400]="i > stepIndex(tracking[o.ordendecompra]!)">{{s.label}}</span>
+              <div class="flex flex-col gap-4">
+
+                @if(tracking[o.ordendecompra] === 'loading') {
+                  <p class="text-sm text-slate-500">Consultando con el courier...</p>
+                } @else if(stepIndex(tracking[o.ordendecompra]!) === -1) {
+                  <p class="text-sm font-semibold text-slate-600">{{tracking[o.ordendecompra]}}</p>
+                } @else {
+                  <div class="flex items-start justify-between">
+                    @for(s of steps; track s.key; let i = $index) {
+                      <div class="flex flex-1 flex-col items-center text-center">
+                        <div class="flex w-full items-center">
+                          @if(i > 0){<span class="h-px flex-1" [class.bg-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.bg-slate-200]="i > stepIndex(tracking[o.ordendecompra]!)"></span>}
+                          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2"
+                                [class.border-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.bg-motorflow-pale]="i <= stepIndex(tracking[o.ordendecompra]!)"
+                                [class.text-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.border-slate-200]="i > stepIndex(tracking[o.ordendecompra]!)" [class.text-slate-300]="i > stepIndex(tracking[o.ordendecompra]!)">
+                            <app-icon [name]="s.icon" [size]="18"/>
+                          </span>
+                          @if(i < steps.length - 1){<span class="h-px flex-1" [class.bg-primary]="i < stepIndex(tracking[o.ordendecompra]!)" [class.bg-slate-200]="i >= stepIndex(tracking[o.ordendecompra]!)"></span>}
+                        </div>
+                        <span class="mt-2 text-xs font-semibold" [class.text-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.text-slate-400]="i > stepIndex(tracking[o.ordendecompra]!)">{{s.label}}</span>
+                      </div>
+                    }
                   </div>
                 }
+
+                @if(tracking[o.ordendecompra] !== 'loading') {
+                  <button (click)="track(o.ordendecompra)" class="self-start flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold text-primary hover:bg-slate-50">
+                    <app-icon name="truck" [size]="16"/> Consultar de nuevo
+                  </button>
+                }
+
               </div>
             }
           </div>

@@ -12,6 +12,7 @@ export class ApiService {
   products(params: any = {}) { return this.h.get<ApiResponse<Product[]>>(`${this.u}/productos`, { params }); }
   product(id: string) { return this.h.get<ApiResponse<Product>>(`${this.u}/productos/${id}`); }
   categories() { return this.h.get<ApiResponse<Category[]>>(`${this.u}/categorias`); }
+  brands() { return this.h.get<ApiResponse<string[]>>(`${this.u}/marcas`); }
 
   // Carrito
   cart() { return this.h.get<ApiResponse<CartItem[]>>(`${this.u}/carrito`); }

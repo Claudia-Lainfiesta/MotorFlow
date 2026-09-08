@@ -20,5 +20,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api', catalogRoutes);
 app.use('/api', commerceRoutes);
 app.use('/api/admin', adminRoutes);
+
+const frontendDist = path.join(process.cwd(), process.env.FRONTEND_DIST || '../FrontEnd/dist/motorflow/browser');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
 app.use((_q, r) => r.status(404).json({ status: 1, message: 'Ruta no encontrada' }));
 app.listen(Number(process.env.PORT || 4000), () => console.log(`MotorFlow API en http://localhost:${process.env.PORT || 4000}`));

@@ -13,7 +13,12 @@ import { IconComponent } from './icon.component';
       <div class="fixed inset-0 z-40 bg-black/40" (click)="close.emit()"></div>
       <aside class="fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] overflow-y-auto bg-white shadow-2xl">
         <div class="flex items-center justify-between border-b p-5">
-          <span class="text-xl font-extrabold text-primary">Motor<span class="text-motorflow-dark">Flow</span></span>
+          <div class="flex items-center gap-2">
+            @if(!isAdminRoute()){
+              <img src="assets/favicon.svg" alt="MotorFlow" class="h-7 w-auto object-contain" />
+            }
+            <span class="text-xl font-extrabold tracking-tight text-primary">Motor<span class="text-motorflow-dark">Flow</span></span>
+          </div>
           <button (click)="close.emit()" class="rounded-md p-1.5 hover:bg-slate-100" aria-label="Cerrar menú">
             <app-icon name="x" [size]="20"/>
           </button>
@@ -38,7 +43,7 @@ import { IconComponent } from './icon.component';
           <a href="/" (click)="goHome($event)" class="flex items-center gap-3 rounded-md px-3 py-2.5 font-semibold hover:bg-slate-50">
             <app-icon name="home" [size]="18"/> Inicio
           </a>
-          <a href="/#catalogo" (click)="goCatalogo($event)" class="flex items-center gap-3 rounded-md px-3 py-2.5 font-semibold hover:bg-slate-50">
+          <a href="/" (click)="goCatalogo($event)" class="flex items-center gap-3 rounded-md px-3 py-2.5 font-semibold hover:bg-slate-50">
             <app-icon name="boxes" [size]="18"/> Productos
           </a>
           @if(auth.authenticated()){
@@ -119,5 +124,9 @@ export class SideNavComponent {
 
   private onHomePath() {
     return this.router.url.split(/[?#]/)[0] === '/';
+  }
+
+  isAdminRoute() {
+    return this.router.url.split(/[?#]/)[0].startsWith('/admin');
   }
 }

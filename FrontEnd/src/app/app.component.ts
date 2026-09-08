@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, afterNextRender, Injector } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './services/auth.service';
@@ -13,7 +13,7 @@ import { SideNavComponent } from './shared/side-nav.component';
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent, SideNavComponent],
   template: `
-    <header class="sticky top-0 z-30 border-b bg-white/95 backdrop-blur">
+    <header class="sticky top-0 z-30 border-b-2 bg-white/90 backdrop-blur">
       <nav class="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3.5">
         <button (click)="drawerOpen.set(true)" class="rounded-md p-2 hover:bg-slate-100" aria-label="Abrir menú">
           <app-icon name="menu" [size]="22"/>
@@ -25,17 +25,17 @@ import { SideNavComponent } from './shared/side-nav.component';
 
         <div class="hidden items-center gap-5 text-sm font-semibold text-slate-600 md:flex">
           <a href="/" (click)="goHome($event)" class="hover:text-primary">Inicio</a>
-          <a href="/#catalogo" (click)="goCatalogo($event)" class="hover:text-primary">Productos</a>
+          <a href="/" (click)="goCatalogo($event)" class="hover:text-primary">Productos</a>
         </div>
 
         <div class="ml-auto flex flex-1 items-center justify-end gap-3">
           <div class="relative hidden w-36 sm:block md:w-44">
-            <div class="absolute inset-y-0 left-2.5 flex items-center text-slate-400">
+            <div class="absolute inset-y-0 left-2.5 flex items-center text-black">
               <app-icon name="search" [size]="15"/>
             </div>
             <button
-              (click)="goCatalogo($event)"
-              class="w-full rounded-full border bg-slate-50 py-2 pl-8 pr-3 text-left text-sm text-slate-400">
+              (click)="goCatalogoBuscar($event)"
+              class="w-full rounded-full border bg-slate-50 py-2 pl-8 pr-3 text-left text-sm text-black font-semibold">
               {{ 'Buscar' }}
             </button>
           </div>
@@ -99,7 +99,7 @@ import { SideNavComponent } from './shared/side-nav.component';
     </footer>
 
     @if(toast.message()){
-      <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md bg-motorflow-dark px-5 py-3 text-sm font-semibold text-white shadow-xl">
+      <div class="fixed top-20 left-1/2 z-50 -translate-x-1/2 rounded-md bg-motorflow-dark px-5 py-3 text-sm font-semibold text-white shadow-xl">
         <div class="flex items-center gap-2">
           <app-icon name="check" [size]="16" strokeColor="#7dd3fc"/> {{toast.message()}}
         </div>
@@ -113,6 +113,8 @@ export class AppComponent {
   toast = inject(ToastService);
   search = inject(SearchService);
   router = inject(Router);
+  injector = inject(Injector);
+  
   drawerOpen = signal(false);
   year = new Date().getFullYear();
 
@@ -122,35 +124,62 @@ export class AppComponent {
 
   initial() { return (this.auth.user()?.cusername || '?').charAt(0).toUpperCase(); }
 
-  /** Navega a "/" y siempre deja el scroll arriba del todo, incluso si ya estabas en "/". */
+  /** Navega a "/" y siempre deja el scroll arriba del todo. */
   goHome(event?: Event) {
     event?.preventDefault();
-    this.drawerOpen.set(false);
-    if (this.onHomePath()) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      this.router.navigateByUrl('/').then(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
-    }
+    this.ejecutarNavegacionOAccion(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
   }
 
-  /** Navega a "/" y desplaza hasta la sección #catalogo, enfocando el input de búsqueda. */
+  /** Navega al catálogo y realiza scroll */
   goCatalogo(event?: Event) {
     event?.preventDefault();
     this.drawerOpen.set(false);
     if (this.onHomePath()) {
       this.scrollToCatalogo();
     } else {
-      this.router.navigateByUrl('/').then(() => setTimeout(() => this.scrollToCatalogo(), 60));
+      this.router.navigateByUrl('/').then(() => 
+        setTimeout(() => this.scrollToCatalogo(), 60)
+      );
     }
   }
 
-  private onHomePath() {
+  /** Navega al catálogo, realiza scroll y enfoca el input de búsqueda */
+  goCatalogoBuscar(event?: Event) {
+    event?.preventDefault();
+    this.drawerOpen.set(false);
+    if (this.onHomePath()) {
+      this.scrollToCatalogoBuscar();
+    } else {
+      this.router.navigateByUrl('/').then(() => 
+        setTimeout(() => this.scrollToCatalogoBuscar(), 60)
+      );
+    }
+  }
+
+  // Helper centralizado que reemplaza los setTimeout por afterNextRender
+  private ejecutarNavegacionOAccion(accion: () => void) {
+    this.drawerOpen.set(false);
+
+    if (this.onHomePath()) {
+      accion();
+    } else {
+      this.router.navigateByUrl('/').then(() => {
+        afterNextRender(() => accion(), { injector: this.injector });
+      });
+    }
+  }
+
+  private onHomePath(): boolean {
     return this.router.url.split(/[?#]/)[0] === '/';
   }
 
   private scrollToCatalogo() {
-    const input = document.querySelector('#catalogo input') as HTMLInputElement;
     document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  private scrollToCatalogoBuscar() {
+    this.scrollToCatalogo();
+    const input = document.querySelector('#catalogo input') as HTMLInputElement;
     input?.focus();
   }
 }

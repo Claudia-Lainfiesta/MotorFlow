@@ -15,12 +15,24 @@ import { Product } from '../models/api';
     @if(product()){
       <section class="mx-auto grid max-w-6xl gap-10 px-6 py-12 md:grid-cols-2">
         <div>
-          <img [src]="img(activeImage())" class="w-full rounded-lg border object-cover" [alt]="product()!.nombreproducto">
+          <div class="relative aspect-square w-full overflow-hidden rounded-xl border border-transparent bg-white flex items-center justify-center p-4">
+            <img 
+              [src]="img(activeImage())" 
+              class="h-full w-full object-contain transition-all duration-300" 
+              [alt]="product()!.nombreproducto"
+            >
+          </div>
+
           @if(gallery().length > 1){
-            <div class="mt-4 flex gap-3">
+            <div class="mt-4 flex gap-3 overflow-x-auto pb-2">
               @for(image of gallery(); track image){
-                <button (click)="activeImage.set(image)" class="h-16 w-16 overflow-hidden rounded-md border-2" [class.border-primary]="activeImage()===image">
-                  <img [src]="img(image)" class="h-full w-full object-cover" alt="">
+                <button 
+                  (click)="activeImage.set(image)" 
+                  class="relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 bg-slate-50 p-1 transition-all" 
+                  [class.border-primary]="activeImage() === image"
+                  [class.border-slate-200]="activeImage() !== image"
+                >
+                  <img [src]="img(image)" class="h-full w-full object-contain" alt="">
                 </button>
               }
             </div>

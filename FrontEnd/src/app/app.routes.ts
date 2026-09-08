@@ -23,6 +23,7 @@ export const routes: Routes = [
   { path: 'admin/categorias', component: AdminComponent, canActivate: [adminGuard] },
   { path: 'admin/subcategorias', component: AdminComponent, canActivate: [adminGuard] },
   { path: 'admin/clientes', component: AdminComponent, canActivate: [adminGuard] },
+  { path: 'admin/pedidos', component: AdminComponent, canActivate: [adminGuard] },
   { path: 'faq', component: FaqComponent },
   {
     path: 'sobre-nosotros', component: StaticComponent, data: {

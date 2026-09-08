@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -7,7 +7,15 @@ import { ToastService } from '../services/toast.service';
 import { IconComponent } from '../shared/icon.component';
 import { Category } from '../models/api';
 
-type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes';
+type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes' | 'pedidos';
+
+const STEPS = [
+  { key: 'nueva', label: 'Orden nueva', icon: 'package', match: ['NUEVA'] },
+  { key: 'surtiendo', label: 'Surtiéndose', icon: 'clock', match: ['SURTI'] },
+  { key: 'empacando', label: 'Empacándose', icon: 'boxes', match: ['EMPAC'] },
+  { key: 'ruta', label: 'En ruta', icon: 'truck', match: ['RUTA'] },
+  { key: 'entregada', label: 'Entregada', icon: 'check', match: ['ENTREG'] },
+];
 
 @Component({
   standalone: true,
@@ -29,23 +37,67 @@ type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes';
 
       <!-- PRODUCTOS -->
       @if(tab()==='productos'){
-        <div class="mt-6 rounded-lg border bg-white p-5">
-          <h2 class="font-bold">{{editingProductId() ? 'Editar producto' : 'Nuevo producto'}}</h2>
-          <div class="mt-3 grid gap-2 sm:grid-cols-3">
-            <input [(ngModel)]="product.nombreproducto" placeholder="Nombre" class="rounded-md border p-2">
-            <input [(ngModel)]="product.marca" placeholder="Marca" class="rounded-md border p-2">
-            <select [(ngModel)]="product.id_categoria" class="rounded-md border p-2">
-              <option [ngValue]="null">Categoría...</option>
-              @for(c of categories(); track c.id_categoria){<option [ngValue]="c.id_categoria">{{c.nombre_categoria}}</option>}
-            </select>
-            <select [(ngModel)]="product.id_subcategoria" class="rounded-md border p-2">
-              <option [ngValue]="null">Subcategoría (opcional)</option>
-              @for(s of subcategoriasOf(product.id_categoria); track s.id_subcategoria){<option [ngValue]="s.id_subcategoria">{{s.nombre_subcategoria}}</option>}
-            </select>
-            <input [(ngModel)]="product.precioproducto" type="number" placeholder="Precio" class="rounded-md border p-2">
-            <input [(ngModel)]="product.stock" type="number" placeholder="Stock" class="rounded-md border p-2">
-            <textarea [(ngModel)]="product.descripcion" placeholder="Descripción" rows="3" class="rounded-md border p-2 sm:col-span-3"></textarea>
-            <textarea [(ngModel)]="product.especificaciones" placeholder="Especificaciones (texto libre — una por línea, ej. &quot;- Temperatura de operación: -50°C a 150°C&quot;)" rows="5" class="rounded-md border p-2 sm:col-span-3"></textarea>
+        <div class="mt-6 rounded-xl border bg-white p-6">
+          <h2 class="text-xl font-extrabold text-slate-900">{{editingProductId() ? 'Editar producto' : 'Nuevo producto'}}</h2>
+  
+          <div class="mt-6 grid gap-5 sm:grid-cols-3">
+            <!-- Nombre -->
+            <label class="flex flex-col gap-1.5 text-sm font-bold text-slate-800">
+              Nombre:
+              <input [(ngModel)]="product.nombreproducto" type="text" class="rounded-lg border border-slate-300 p-3 text-base font-normal text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+            </label>
+
+            <!-- Marca -->
+            <label class="flex flex-col gap-1.5 text-sm font-bold text-slate-800">
+              Marca:
+              <input [(ngModel)]="product.marca" type="text" class="rounded-lg border border-slate-300 p-3 text-base font-normal text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+            </label>
+
+            <!-- Categoría -->
+            <label class="flex flex-col gap-1.5 text-sm font-bold text-slate-800">
+              Categoría:
+              <select [(ngModel)]="product.id_categoria" class="rounded-lg border border-slate-300 bg-white p-3 text-base font-normal text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+                <option [ngValue]="null">Seleccionar categoría...</option>
+                @for(c of categories(); track c.id_categoria){
+                  <option [ngValue]="c.id_categoria">{{c.nombre_categoria}}</option>
+                }
+              </select>
+            </label>
+
+            <!-- Subcategoría -->
+            <label class="flex flex-col gap-1.5 text-sm font-bold text-slate-800">
+              Subcategoría (opcional):
+              <select [(ngModel)]="product.id_subcategoria" class="rounded-lg border border-slate-300 bg-white p-3 text-base font-normal text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+                <option [ngValue]="null">Sin subcategoría</option>
+                @for(s of subcategoriasOf(product.id_categoria); track s.id_subcategoria){
+                  <option [ngValue]="s.id_subcategoria">{{s.nombre_subcategoria}}</option>
+                }
+              </select>
+            </label>
+
+            <!-- Precio -->
+            <label class="flex flex-col gap-1.5 text-sm font-bold text-slate-800">
+              Precio (Q):
+              <input [(ngModel)]="product.precioproducto" type="number" min="0" step="0.01" class="rounded-lg border border-slate-300 p-3 text-base font-normal text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+            </label>
+
+            <!-- Stock -->
+            <label class="flex flex-col gap-1.5 text-sm font-bold text-slate-800">
+              Stock disponible:
+              <input [(ngModel)]="product.stock" type="number" min="0" class="rounded-lg border border-slate-300 p-3 text-base font-normal text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+            </label>
+
+            <!-- Descripción -->
+            <label class="flex flex-col gap-1.5 text-sm font-bold text-slate-800 sm:col-span-3">
+              Descripción:
+              <textarea [(ngModel)]="product.descripcion" rows="3" class="rounded-lg border border-slate-300 p-3 text-base font-normal text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"></textarea>
+            </label>
+
+            <!-- Especificaciones -->
+            <label class="flex flex-col gap-1.5 text-sm font-bold text-slate-800 sm:col-span-3">
+              Especificaciones:
+              <textarea [(ngModel)]="product.especificaciones" rows="3" class="rounded-lg border border-slate-300 p-3 text-base font-normal text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"></textarea>
+            </label>
           </div>
 
           <div class="mt-3 flex items-center gap-4">
@@ -68,12 +120,18 @@ type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes';
           </div>
         </div>
 
-        <div class="mt-6 overflow-auto rounded-lg border bg-white">
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+          <input [ngModel]="searchName()" (ngModelChange)="searchName.set($event)" placeholder="Buscar por nombre..." class="flex-1 rounded-md border p-2.5 text-sm">
+          <input [ngModel]="searchId()" (ngModelChange)="searchId.set($event)" placeholder="Buscar por ID..." inputmode="numeric" class="w-full rounded-md border p-2.5 text-sm sm:w-40">
+        </div>
+
+        <div class="mt-4 overflow-auto rounded-lg border bg-white">
           <table class="w-full text-left">
-            <thead><tr class="border-b bg-motorflow-pale/40 text-sm"><th class="p-3">Producto</th><th class="p-3">Precio</th><th class="p-3">Stock</th><th class="p-3">Acciones</th></tr></thead>
+            <thead><tr class="border-b bg-motorflow-pale/40 text-sm"><th class="p-3">ID</th><th class="p-3">Producto</th><th class="p-3">Precio</th><th class="p-3">Stock</th><th class="p-3">Acciones</th></tr></thead>
             <tbody>
-              @for(p of products(); track p.idproducto){
+              @for(p of filteredProducts(); track p.idproducto){
                 <tr class="border-b">
+                  <td class="p-3 font-mono text-slate-500">#{{p.idproducto}}</td>
                   <td class="flex items-center gap-3 p-3"><img [src]="img(p.imagen_principal)" class="h-9 w-9 rounded border object-cover">{{p.nombreproducto}}</td>
                   <td class="p-3">Q{{p.precioproducto}}</td>
                   <td class="p-3">{{p.stock}}</td>
@@ -84,6 +142,9 @@ type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes';
                     </div>
                   </td>
                 </tr>
+              }
+              @if(!filteredProducts().length){
+                <tr><td colspan="5" class="p-6 text-center text-slate-500">No hay productos que coincidan con la búsqueda.</td></tr>
               }
             </tbody>
           </table>
@@ -148,6 +209,81 @@ type Tab = 'productos' | 'categorias' | 'subcategorias' | 'clientes';
         </div>
       }
 
+      <!-- PEDIDOS GLOBALES -->
+      @if(tab()==='pedidos'){
+        <div class="mt-6">
+          <input [ngModel]="orderSearch()" (ngModelChange)="orderSearch.set($event)" placeholder="Buscar por usuario o # de orden..." class="w-full rounded-md border p-2.5 text-sm sm:w-80">
+        </div>
+
+        @if(!filteredOrders().length){
+          <p class="mt-6 text-center text-slate-500">No hay pedidos que coincidan.</p>
+        }
+
+        @for(o of filteredOrders(); track o.ordendecompra){
+          <article class="mt-5 rounded-lg border bg-white p-5">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 class="flex items-center gap-2 font-bold"><app-icon name="package" [size]="18" strokeColor="#1677d2"/> Orden #{{o.ordendecompra}}</h2>
+                <p class="text-sm text-slate-500">{{o.cusername}} · {{o.email}} · {{o.fecha | date:'medium'}} · Enviado por {{o.courier}}</p>
+              </div>
+              <b class="text-lg">Q{{o.total}}</b>
+            </div>
+
+            <div class="mt-4 divide-y border-y">
+              @for(item of o.items; track item.idproducto){
+                <div class="flex items-center justify-between py-2 text-sm">
+                  <span>{{item.nombreproducto}} <span class="text-slate-400">× {{item.cantidad}}</span></span>
+                  <span class="text-slate-500">Q{{item.precio_unitario}} c/u · <b class="text-slate-700">Q{{item.subtotal}}</b></span>
+                </div>
+              }
+            </div>
+            <div class="mt-2 space-y-1 text-right text-sm">
+              <p class="text-slate-500">Envío ({{o.courier}}): <b class="text-slate-700">Q{{o.costo_envio}}</b></p>
+              <p class="font-bold">Total: Q{{o.total}}</p>
+            </div>
+
+            <div class="mt-5 border-t pt-5">
+              @if(!tracking[o.ordendecompra]){
+                <button (click)="track(o.ordendecompra)" class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold text-primary hover:bg-slate-50">
+                  <app-icon name="truck" [size]="16"/> Consultar estatus de envío
+                </button>
+              } @else {
+                <div class="flex flex-col gap-4">
+                  @if(tracking[o.ordendecompra] === 'loading') {
+                    <p class="text-sm text-slate-500">Consultando con el courier...</p>
+                  } @else if(stepIndex(tracking[o.ordendecompra]!) === -1) {
+                    <p class="text-sm font-semibold text-slate-600">{{tracking[o.ordendecompra]}}</p>
+                  } @else {
+                    <div class="flex items-start justify-between">
+                      @for(s of steps; track s.key; let i = $index) {
+                        <div class="flex flex-1 flex-col items-center text-center">
+                          <div class="flex w-full items-center">
+                            @if(i > 0){<span class="h-px flex-1" [class.bg-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.bg-slate-200]="i > stepIndex(tracking[o.ordendecompra]!)"></span>}
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2"
+                                  [class.border-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.bg-motorflow-pale]="i <= stepIndex(tracking[o.ordendecompra]!)"
+                                  [class.text-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.border-slate-200]="i > stepIndex(tracking[o.ordendecompra]!)" [class.text-slate-300]="i > stepIndex(tracking[o.ordendecompra]!)">
+                              <app-icon [name]="s.icon" [size]="18"/>
+                            </span>
+                            @if(i < steps.length - 1){<span class="h-px flex-1" [class.bg-primary]="i < stepIndex(tracking[o.ordendecompra]!)" [class.bg-slate-200]="i >= stepIndex(tracking[o.ordendecompra]!)"></span>}
+                          </div>
+                          <span class="mt-2 text-xs font-semibold" [class.text-primary]="i <= stepIndex(tracking[o.ordendecompra]!)" [class.text-slate-400]="i > stepIndex(tracking[o.ordendecompra]!)">{{s.label}}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if(tracking[o.ordendecompra] !== 'loading') {
+                    <button (click)="track(o.ordendecompra)" class="self-start flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold text-primary hover:bg-slate-50">
+                      <app-icon name="truck" [size]="16"/> Consultar de nuevo
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </article>
+        }
+      }
+
     </section>
   `
 })
@@ -157,14 +293,37 @@ export class AdminComponent implements OnInit {
   route = inject(ActivatedRoute);
   router = inject(Router);
 
-  tabs: Tab[] = ['productos', 'categorias', 'subcategorias', 'clientes'];
-  labels: Record<Tab, string> = { productos: 'Productos', categorias: 'Categorías', subcategorias: 'Subcategorías', clientes: 'Clientes' };
+  tabs: Tab[] = ['productos', 'categorias', 'subcategorias', 'clientes', 'pedidos'];
+  labels: Record<Tab, string> = { productos: 'Productos', categorias: 'Categorías', subcategorias: 'Subcategorías', clientes: 'Clientes', pedidos: 'Pedidos Globales' };
   tab = signal<Tab>('productos');
 
   products = signal<any[]>([]);
   categories = signal<Category[]>([]);
   clientes = signal<any[]>([]);
   uploading = false;
+
+  searchName = signal('');
+  searchId = signal('');
+  filteredProducts = computed(() => {
+    const name = this.searchName().trim().toLowerCase();
+    const id = this.searchId().trim();
+    return this.products().filter(p =>
+      (!name || p.nombreproducto.toLowerCase().includes(name)) &&
+      (!id || String(p.idproducto).includes(id))
+    );
+  });
+
+  allOrders = signal<any[]>([]);
+  orderSearch = signal('');
+  tracking: Record<number, string> = {};
+  steps = STEPS;
+  filteredOrders = computed(() => {
+    const q = this.orderSearch().trim().toLowerCase();
+    if (!q) return this.allOrders();
+    return this.allOrders().filter(o =>
+      o.cusername.toLowerCase().includes(q) || String(o.ordendecompra).includes(q)
+    );
+  });
 
   editingProductId = signal<number | null>(null);
   product: any = this.blankProduct();
@@ -185,6 +344,7 @@ export class AdminComponent implements OnInit {
   loadTabData(t: Tab) {
     if (t === 'productos') this.api.products().subscribe(r => this.products.set(r.data));
     if (t === 'clientes') this.api.admin('clientes').subscribe(r => this.clientes.set(r.data));
+    if (t === 'pedidos') this.api.orders().subscribe(r => this.allOrders.set(r.data));
   }
 
   subcategoriasOf(idCategoria: number | null) {
@@ -250,4 +410,16 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  track(id: number) {
+    this.tracking[id] = 'loading';
+    this.api.track(id).subscribe({
+      next: r => this.tracking[id] = r.data.status || 'Sin información',
+      error: () => this.tracking[id] = 'No se pudo consultar el estatus en este momento.'
+    });
+  }
+
+  stepIndex(status: string): number {
+    const upper = (status || '').toUpperCase();
+    return STEPS.findIndex(s => s.match.some(m => upper.includes(m)));
+  }
 }
