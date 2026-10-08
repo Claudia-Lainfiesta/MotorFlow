@@ -8,39 +8,32 @@ export class ApiService {
   private h = inject(HttpClient);
   private u = environment.apiUrl;
 
-  // Catálogo público
   products(params: any = {}) { return this.h.get<ApiResponse<Product[]>>(`${this.u}/productos`, { params }); }
   product(id: string) { return this.h.get<ApiResponse<Product>>(`${this.u}/productos/${id}`); }
   categories() { return this.h.get<ApiResponse<Category[]>>(`${this.u}/categorias`); }
   brands() { return this.h.get<ApiResponse<string[]>>(`${this.u}/marcas`); }
 
-  // Carrito
   cart() { return this.h.get<ApiResponse<CartItem[]>>(`${this.u}/carrito`); }
   putCart(idproducto: number, cantidad: number) { return this.h.put<ApiResponse<void>>(`${this.u}/carrito`, { idproducto, cantidad }); }
   removeCart(id: number) { return this.h.delete<ApiResponse<void>>(`${this.u}/carrito/${id}`); }
 
-  // Direcciones del cliente (CRUD completo)
   addresses() { return this.h.get<ApiResponse<any[]>>(`${this.u}/direcciones`); }
   saveAddress(b: any) { return this.h.post<ApiResponse<any>>(`${this.u}/direcciones`, b); }
   updateAddress(id: number, b: any) { return this.h.put<ApiResponse<any>>(`${this.u}/direcciones/${id}`, b); }
   deleteAddress(id: number) { return this.h.delete<ApiResponse<void>>(`${this.u}/direcciones/${id}`); }
 
-  // Checkout / couriers
-  quotes(destino: string) { return this.h.get<ApiResponse<any[]>>(`${this.u}/couriers/cotizaciones`, { params: { destino } }); }
+  quotes(destino: string, formato: 'json' | 'xml' = 'json') { return this.h.get<ApiResponse<any[]>>(`${this.u}/couriers/cotizaciones`, { params: { destino, formato } }); }
   checkout(b: any) { return this.h.post<ApiResponse<any>>(`${this.u}/checkout`, b); }
 
-  // Pedidos del cliente
   orders() { return this.h.get<ApiResponse<any[]>>(`${this.u}/pedidos`); }
-  track(id: number) { return this.h.get<ApiResponse<any>>(`${this.u}/pedidos/${id}/estatus`); }
+  track(id: number, formato: 'json' | 'xml' = 'json') { return this.h.get<ApiResponse<any>>(`${this.u}/pedidos/${id}/estatus`, { params: { formato } }); }
 
-  // Admin — lectura y creación genérica (se mantiene por compatibilidad)
   admin(path: string, body?: any) {
     return body === undefined
       ? this.h.get<any>(`${this.u}/admin/${path}`)
       : this.h.post<any>(`${this.u}/admin/${path}`, body);
   }
 
-  // Admin — edición y borrado (CRUD completo: productos, categorías, subcategorías)
   adminUpdate(path: string, id: number | string, body: any) { return this.h.put<any>(`${this.u}/admin/${path}/${id}`, body); }
   adminDelete(path: string, id: number | string) { return this.h.delete<any>(`${this.u}/admin/${path}/${id}`); }
   uploadImage(file: File) {

@@ -7,6 +7,7 @@ import { Router } from '@angular/router';
 import { CartItem } from '../models/api';
 
 type CardBrand = 'visa' | 'mastercard' | 'credomatic';
+type Formato = 'json' | 'xml';
 
 const CARD_LOGOS: Record<CardBrand, string> = {
   visa: 'https://commons.wikimedia.org/wiki/Special:FilePath/Visa%20Brandmark%202021.svg',
@@ -41,6 +42,21 @@ const CARD_LOGOS: Record<CardBrand, string> = {
           </div>
         </div>
 
+        <div class="mt-6 rounded-lg border bg-white p-6">
+          <h2 class="font-bold">Formato de intercambio</h2>
+          <p class="mt-1 text-sm text-slate-500">Formato en que MotorFlow se comunica con los couriers y con el emisor de la tarjeta.</p>
+          <div class="mt-3 grid grid-cols-2 gap-3">
+            @for(f of formatos; track f.value){
+              <button type="button" (click)="setFormato(f.value)"
+                      [class.border-primary]="formato===f.value" [class.bg-motorflow-pale]="formato===f.value" [class.text-primary]="formato===f.value"
+                      class="rounded-md border p-3 text-left">
+                <span class="block font-extrabold">{{f.label}}</span>
+                <span class="block text-xs font-normal text-slate-500">{{f.hint}}</span>
+              </button>
+            }
+          </div>
+        </div>
+
         @if(quotes().length){
           <div class="mt-6 rounded-lg border bg-white p-6">
             <h2 class="font-bold">Elige courier</h2>
@@ -53,6 +69,7 @@ const CARD_LOGOS: Record<CardBrand, string> = {
             <button (click)="step.set(2)" [disabled]="!courier" class="mt-6 rounded-md bg-primary px-6 py-3 font-bold text-white disabled:bg-slate-300">Continuar al pago</button>
           </div>
         }
+        @if(error){<p class="mt-4 text-sm text-red-600">{{error}}</p>}
       } @else {
         <!-- Resumen del pedido -->
         <div class="mt-6 rounded-lg border bg-white p-6">
@@ -69,6 +86,10 @@ const CARD_LOGOS: Record<CardBrand, string> = {
               <span class="font-semibold">{{q.nombre}} · Q{{q.costo}}</span>
             </div>
           }
+          <div class="mt-3 flex justify-between border-b pb-3 text-sm">
+            <span class="text-slate-500">Formato de intercambio</span>
+            <span class="font-semibold">{{formato.toUpperCase()}}</span>
+          </div>
           <div class="mt-3 flex justify-between text-sm">
             <span class="text-slate-500">Subtotal de productos</span>
             <span class="font-semibold">Q{{subtotal().toFixed(2)}}</span>
@@ -142,6 +163,12 @@ export class CheckoutComponent implements OnInit {
   paying = false;
   cardLogos = CARD_LOGOS;
 
+  formato: Formato = 'json';
+  formatos: { value: Formato; label: string; hint: string }[] = [
+    { value: 'json', label: 'JSON', hint: 'Formato por defecto' },
+    { value: 'xml', label: 'XML', hint: 'Mensajes en XML' },
+  ];
+
   newAddress: any = { dnombre: '', calle: '', ciudad: '', codigo_destino: '', telefono: '', es_predeterminada: true };
   payment: any = { tarjeta: '', nombre: '', num_seguridad: '' };
 
@@ -174,9 +201,16 @@ export class CheckoutComponent implements OnInit {
     return null;
   }
 
+  setFormato(f: Formato) {
+    if (this.formato === f) return;
+    this.formato = f;
+    this.quote(); // las cotizaciones se piden en el formato elegido
+  }
+
   quote() {
+    this.error = '';
     const a = this.addresses().find(x => x.id_direccion === this.addressId);
-    if (a) this.api.quotes(a.codigo_destino).subscribe({ next: r => this.quotes.set(r.data), error: () => this.error = 'No se pudo consultar a los couriers.' });
+    if (a) this.api.quotes(a.codigo_destino, this.formato).subscribe({ next: r => this.quotes.set(r.data), error: () => this.error = 'No se pudo consultar a los couriers.' });
   }
 
   saveAddress() {
@@ -191,7 +225,7 @@ export class CheckoutComponent implements OnInit {
     if (!this.expMonth || !this.expYear) { this.error = 'Selecciona el mes y año de vencimiento.'; return; }
     this.paying = true;
     const fecha_venc = `${this.expYear}${this.expMonth}`;
-    this.api.checkout({ id_direccion: this.addressId, id_courier: this.courier, ...this.payment, fecha_venc }).subscribe({
+    this.api.checkout({ id_direccion: this.addressId, id_courier: this.courier, ...this.payment, fecha_venc, formato: this.formato }).subscribe({
       next: r => { this.cartService.refresh(); this.router.navigate(['/pedidos'], { queryParams: { created: r.data.orden } }); },
       error: e => { this.paying = false; this.error = e.error?.message || 'No se pudo procesar el pago'; }
     });

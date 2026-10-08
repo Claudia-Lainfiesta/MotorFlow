@@ -5,6 +5,7 @@ import {
   createShipment,
   shipmentStatus,
   shippingQuote,
+  parseFormato,
 } from "../services/external.js";
 import { notifyTelegram } from "../services/telegram.js";
 export async function cart(req: Request, res: Response) {
@@ -182,6 +183,7 @@ export async function updateAddress(req: Request, res: Response) {
 }
 export async function quotes(req: Request, res: Response) {
   const destino = String(req.query.destino || "");
+  const formato = parseFormato(req.query.formato);
   const postal = await pool.query(
     "SELECT 1 FROM codigos_postales WHERE codigo_destino=$1",
     [destino],
@@ -191,21 +193,40 @@ export async function quotes(req: Request, res: Response) {
       .status(400)
       .json({ status: 1, message: "Código postal no válido" });
   const cs = await pool.query("SELECT id_courier,nombre FROM couriers");
-  try {
-    const data = await Promise.all(
-      cs.rows.map(async (c) => ({
-        id_courier: c.id_courier,
-        nombre: c.nombre,
-        ...(await shippingQuote(c.id_courier, destino)).consultaprecio,
-      })),
-    );
-    res.json({ status: 0, message: "Cotizaciones obtenidas", data });
-  } catch {
-    res
-      .status(502)
-      .json({ status: 1, message: "No fue posible consultar couriers" });
+    try {
+      const results = await Promise.allSettled(
+        cs.rows.map(async (c) => ({
+          id_courier: c.id_courier,
+          nombre: c.nombre,
+          ...(await shippingQuote(c.id_courier, destino, formato)).consultaprecio,
+        })),
+      );
+
+      results.forEach((r, i) => {
+        if (r.status === "rejected") {
+          console.error(
+            `Courier "${cs.rows[i].id_courier}" no respondió:`,
+            r.reason instanceof Error ? r.reason.message : r.reason,
+          );
+        }
+      });
+
+      const data = results
+        .filter((r) => r.status === "fulfilled")
+        .map((r) => (r as PromiseFulfilledResult<any>).value);
+
+      if (!data.length)
+        return res
+          .status(502)
+          .json({ status: 1, message: "No fue posible consultar couriers" });
+
+      res.json({ status: 0, message: "Cotizaciones obtenidas", data });
+    } catch {
+      res
+        .status(502)
+        .json({ status: 1, message: "No fue posible consultar couriers" });
+    }
   }
-}
 export async function checkout(req: Request, res: Response) {
   const {
     id_direccion,
@@ -215,6 +236,7 @@ export async function checkout(req: Request, res: Response) {
     fecha_venc,
     num_seguridad,
   } = req.body;
+  const formato = parseFormato(req.body.formato);
   const user = req.user!.cusername;
   const client = await pool.connect();
   try {
@@ -251,7 +273,7 @@ export async function checkout(req: Request, res: Response) {
     ).rows[0];
     if (!courier)
       return res.status(400).json({ status: 1, message: "Courier inválido" });
-    const quote = (await shippingQuote(id_courier, addr.codigo_destino))
+    const quote = (await shippingQuote(id_courier, addr.codigo_destino, formato))
       .consultaprecio;
     if (quote.cobertura !== "TRUE")
       return res
@@ -274,14 +296,18 @@ export async function checkout(req: Request, res: Response) {
         .status(400)
         .json({ status: 1, message: "Emisor de tarjeta no soportado" });
     const payment = (
-      await authorize(issuer.id_emisor, {
-        tarjeta: String(tarjeta),
-        nombre: String(nombre),
-        fecha_venc: String(fecha_venc),
-        num_seguridad: String(num_seguridad),
-        monto: total.toFixed(2),
-        tienda: "MotorFlow",
-      })
+      await authorize(
+        issuer.id_emisor,
+        {
+          tarjeta: String(tarjeta),
+          nombre: String(nombre),
+          fecha_venc: String(fecha_venc),
+          num_seguridad: String(num_seguridad),
+          monto: total.toFixed(2),
+          tienda: "motorflow",
+        },
+        formato,
+      )
     ).autorizacion;
     if (payment.status !== "APROBADO")
       return res
@@ -316,13 +342,17 @@ export async function checkout(req: Request, res: Response) {
     }
     await client.query("DELETE FROM carrito_items WHERE cusername=$1", [user]);
     await client.query("COMMIT");
-    await createShipment(id_courier, {
-      orden: String(order.ordendecompra),
-      destinatario: user,
-      destino: addr.codigo_destino,
-      direccion: `${addr.calle}, ${addr.ciudad}`,
-      tienda: "MotorFlow",
-    });
+    await createShipment(
+      id_courier,
+      {
+        orden: String(order.ordendecompra),
+        destinatario: user,
+        destino: addr.codigo_destino,
+        direccion: `${addr.calle}, ${addr.ciudad}`,
+        tienda: "motorflow",
+      },
+      formato,
+    );
     notifyTelegram(
       `<b>Nueva orden #${order.ordendecompra}</b>\nCliente: ${user}\nTotal: Q${total.toFixed(2)}\nCourier: ${id_courier}\nEnvío a: ${addr.calle}, ${addr.ciudad} (${addr.codigo_destino})\nAutorización: ${payment.numero}`,
     );
@@ -378,6 +408,6 @@ export async function track(req: Request, res: Response) {
   );
   if (!rows[0])
     return res.status(404).json({ status: 1, message: "Orden no encontrada" });
-  const data = await shipmentStatus(rows[0].id_courier, id);
+  const data = await shipmentStatus(rows[0].id_courier, id, parseFormato(req.query.formato));
   res.json({ status: 0, message: "Estatus obtenido", data: data.orden });
 }
