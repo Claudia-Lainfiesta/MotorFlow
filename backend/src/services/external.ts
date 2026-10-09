@@ -17,6 +17,17 @@ const courierHost = (id: string) =>
     courier3: process.env.COURIER_3_HOST,
   } as Record<string, string | undefined>)[id];
 
+// Función auxiliar para resolver si un proveedor específico necesita .php en su ruta
+const resolvePath = (id: string, basePath: string): string => {
+  // Proveedores que obligatoriamente necesitan la extensión .php
+  const phpProviders = ['tarjeta', 'courier10'];
+  
+  if (phpProviders.includes(id)) {
+    return `${basePath}.php`;
+  }
+  return basePath;
+};
+
 const decodeEntities = (s: string) =>
   s
     .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
@@ -126,16 +137,20 @@ const buildUrl = (host: string, path: string, params: Record<string, string>, fo
 
 export function authorize(emisor: string, input: Record<string, string>, formato: Formato = 'json') {
   const host = requireHost(emitterHost(emisor), `el emisor "${emisor}"`);
+  const path = resolvePath(emisor, '/autorizacion'); // Aplica .php si es 'mastercard'
+  
   return request<{
     autorizacion: {
       status: string;
       numero: string;
     };
-  }>(buildUrl(host, '/autorizacion', input, formato), formato);
+  }>(buildUrl(host, path, input, formato), formato);
 }
 
 export function shippingQuote(courier: string, destino: string, formato: Formato = 'json') {
   const host = requireHost(courierHost(courier), `el courier "${courier}"`);
+  const path = resolvePath(courier, '/consulta'); // Aplica .php si es 'courier2'
+  
   return request<{
     consultaprecio: {
       courrier: string;
@@ -143,21 +158,25 @@ export function shippingQuote(courier: string, destino: string, formato: Formato
       cobertura: string;
       costo: string | number;
     };
-  }>(buildUrl(host, '/consulta', { destino }, formato), formato);
+  }>(buildUrl(host, path, { destino }, formato), formato);
 }
 
 export function createShipment(courier: string, input: Record<string, string>, formato: Formato = 'json') {
   const host = requireHost(courierHost(courier), `el courier "${courier}"`);
-  return request<any>(buildUrl(host, '/envio', input, formato), formato);
+  const path = resolvePath(courier, '/envio'); // Aplica .php si es 'courier2'
+  
+  return request<any>(buildUrl(host, path, input, formato), formato);
 }
 
 export function shipmentStatus(courier: string, orden: string, formato: Formato = 'json') {
   const host = requireHost(courierHost(courier), `el courier "${courier}"`);
+  const path = resolvePath(courier, '/status'); // Aplica .php si es 'courier2'
+  
   return request<{
     orden: {
       courrier: string;
       orden: string;
       status: string;
     };
-  }>(buildUrl(host, '/status', { orden, tienda: 'motorflow' }, formato), formato);
+  }>(buildUrl(host, path, { orden, tienda: 'motorflow' }, formato), formato);
 }
